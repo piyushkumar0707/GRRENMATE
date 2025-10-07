@@ -243,7 +243,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Piyush Kumar**
 - GitHub: [@piyushkumar0707](https://github.com/piyushkumar0707)
-- Email: your.email@example.com
+- Email: 121piyush466mits@gmail.com
 
 ## 🙏 Acknowledgments
 
