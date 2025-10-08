@@ -2,7 +2,7 @@ import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { z } from 'zod'
-import { db, UserRole } from '@greenmate/database/mock'
+import { db } from '@greenmate/database'
 import { config } from '../config'
 import { authenticateToken } from '../middleware/auth'
 

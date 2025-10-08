@@ -7,10 +7,10 @@ services:
     container_name: greenmate_postgres
     environment:
       POSTGRES_DB: greenmate
-      POSTGRES_USER: greenmate_user
-      POSTGRES_PASSWORD: greenmate_password
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: greenmate123
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./packages/database/init.sql:/docker-entrypoint-initdb.d/init.sql

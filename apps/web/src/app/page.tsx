@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Hero, Card, CardHeader, CardTitle, CardDescription, CardContent, Button, PlantCard } from '@greenmate/ui'
-import { Camera, Leaf, Users, Sparkles, Brain, Heart, Globe, Zap, ArrowRight, Play, Star, CheckCircle } from 'lucide-react'
+import { Camera, Leaf, Users, Sparkles, Brain, Heart, Globe, Zap, ArrowRight, Play, Star, CheckCircle, ShoppingBag } from 'lucide-react'
 import Link from 'next/link'
 
 const features = [
@@ -33,7 +33,7 @@ const features = [
   {
     icon: <Users className="h-8 w-8" />,
     title: "Plant Community",
-    description: "Share plant photos, stories, and connect with fellow plant enthusiasts worldwide.",
+    description: "Share experiences, get expert advice, and connect with fellow plant enthusiasts worldwide.",
     gradient: "from-indigo-400 to-purple-500"
   },
   {
@@ -41,6 +41,12 @@ const features = [
     title: "Smart Reminders",
     description: "Weather-aware watering and care notifications that adapt to your plant's needs.",
     gradient: "from-yellow-400 to-orange-500"
+  },
+  {
+    icon: <ShoppingBag className="h-8 w-8" />,
+    title: "Plant Marketplace",
+    description: "Buy and sell plants, seeds, tools, and accessories with local gardeners and enthusiasts.",
+    gradient: "from-emerald-400 to-teal-500"
   }
 ]
 
@@ -107,11 +113,23 @@ export default function HomePage() {
             </span>
           </div>
           <div className="flex items-center space-x-4">
-            <Link href="/demo/plant/1" className="text-foreground hover:text-primary-600 transition-colors">
-              Plant Details
+            <Link href="/demo/disease-detection" className="text-foreground hover:text-primary-600 transition-colors">
+              Disease Detection
+            </Link>
+            <Link href="/demo/weather-care" className="text-foreground hover:text-primary-600 transition-colors">
+              Weather Care
+            </Link>
+            <Link href="/demo/community" className="text-foreground hover:text-primary-600 transition-colors">
+              Community
+            </Link>
+            <Link href="/demo/marketplace" className="text-foreground hover:text-primary-600 transition-colors">
+              Marketplace
+            </Link>
+            <Link href="/demo/notifications" className="text-foreground hover:text-primary-600 transition-colors">
+              Notifications
             </Link>
             <Button variant="gradient" asChild>
-              <Link href="/demo/recognition">Try Demo</Link>
+              <Link href="/demo/dashboard">Try Demo</Link>
             </Button>
           </div>
         </nav>

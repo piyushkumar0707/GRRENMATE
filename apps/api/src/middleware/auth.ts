@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { config } from '../config'
-import { db } from '@greenmate/database/mock'
+import { db } from '@greenmate/database'
 
 // Extend Express Request interface to include user
 declare global {

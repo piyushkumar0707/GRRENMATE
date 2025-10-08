@@ -9,6 +9,12 @@ import authRoutes from './routes/auth'
 import plantRoutes from './routes/plants'
 import recognitionRoutes from './routes/recognition'
 import userRoutes from './routes/user'
+import diseaseDetectionRoutes from './routes/diseaseDetection'
+import weatherCareRoutes from './routes/weatherCare'
+import communityRoutes from './routes/community'
+import marketplaceRoutes from './routes/marketplace'
+import notificationsRoutes from './routes/notifications'
+import { notificationService } from './services/notifications'
 
 const app = express()
 
@@ -61,6 +67,11 @@ app.use('/api/auth', authRoutes)
 app.use('/api/plants', plantRoutes)
 app.use('/api/recognition', recognitionRoutes)
 app.use('/api/user', userRoutes)
+app.use('/api/disease-detection', diseaseDetectionRoutes)
+app.use('/api/weather-care', weatherCareRoutes)
+app.use('/api/community', communityRoutes)
+app.use('/api/marketplace', marketplaceRoutes)
+app.use('/api/notifications', notificationsRoutes)
 
 // Error handling
 app.use(notFoundHandler)
@@ -74,6 +85,9 @@ const server = app.listen(config.port, () => {
 🔗 CORS origin: ${config.cors.origin}
 ⚡ Ready to handle requests!
   `)
+  
+  // Initialize notification service with scheduled tasks
+  notificationService.init()
 })
 
 // Graceful shutdown

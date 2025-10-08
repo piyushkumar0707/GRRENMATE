@@ -225,17 +225,23 @@ async function main() {
   console.log('🌿 Creating plants...')
   for (const plantData of plants) {
     const { care, ...plant } = plantData
-    await prisma.plant.upsert({
-      where: { scientificName: plant.scientificName },
-      update: {},
-      create: {
-        ...plant,
-        isVerified: true,
-        care: {
-          create: care
-        }
-      }
+    
+    // Check if plant already exists
+    const existingPlant = await prisma.plant.findFirst({
+      where: { scientificName: plant.scientificName }
     })
+    
+    if (!existingPlant) {
+      await prisma.plant.create({
+        data: {
+          ...plant,
+          isVerified: true,
+          care: {
+            create: care
+          }
+        }
+      })
+    }
   }
 
   // Create sample achievements
@@ -279,11 +285,15 @@ async function main() {
 
   console.log('🏆 Creating achievements...')
   for (const achievement of achievements) {
-    await prisma.achievement.upsert({
-      where: { name: achievement.name },
-      update: {},
-      create: achievement
+    const existing = await prisma.achievement.findUnique({
+      where: { name: achievement.name }
     })
+    
+    if (!existing) {
+      await prisma.achievement.create({
+        data: achievement
+      })
+    }
   }
 
   // Create sample user plants for demo user
