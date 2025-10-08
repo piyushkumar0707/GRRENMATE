@@ -1,0 +1,359 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { 
+  Camera, Leaf, Users, Sparkles, Brain, Heart, Globe, Zap, ArrowRight, Play, Star, 
+  CheckCircle, ShoppingBag, Microscope, Cloud, Bell, MessageCircle, Search, Bot,
+  Smartphone, TreePine, Droplets, Sun, Wind, MapPin, TrendingUp, Award, Shield
+} from 'lucide-react'
+
+const features = [
+  {
+    icon: <Search className="h-8 w-8" />,
+    title: "AI Plant Recognition",
+    description: "Upload images to identify plants instantly with 95% accuracy using advanced AI technology.",
+    gradient: "from-emerald-500 to-green-600",
+    link: "/demo/recognition",
+    delay: 0.1
+  },
+  {
+    icon: <Microscope className="h-8 w-8" />,
+    title: "Disease Detection",
+    description: "AI-powered analysis to identify plant diseases and get instant treatment recommendations.",
+    gradient: "from-red-500 to-pink-600", 
+    link: "/demo/disease-detection",
+    delay: 0.2
+  },
+  {
+    icon: <Cloud className="h-8 w-8" />,
+    title: "Weather-Based Care",
+    description: "Get personalized care recommendations based on real-time weather conditions.",
+    gradient: "from-blue-500 to-cyan-600",
+    link: "/demo/weather-care", 
+    delay: 0.3
+  },
+  {
+    icon: <MessageCircle className="h-8 w-8" />,
+    title: "Plant Community",
+    description: "Connect with fellow gardeners, share experiences, and get expert advice.",
+    gradient: "from-purple-500 to-indigo-600",
+    link: "/demo/community",
+    delay: 0.4
+  },
+  {
+    icon: <ShoppingBag className="h-8 w-8" />,
+    title: "Plant Marketplace", 
+    description: "Buy and sell plants, seeds, tools, and accessories with local gardeners.",
+    gradient: "from-orange-500 to-amber-600",
+    link: "/demo/marketplace",
+    delay: 0.5
+  },
+  {
+    icon: <Bell className="h-8 w-8" />,
+    title: "Smart Notifications",
+    description: "Weather-aware reminders and alerts to keep your plants healthy and thriving.",
+    gradient: "from-teal-500 to-emerald-600", 
+    link: "/demo/notifications",
+    delay: 0.6
+  }
+]
+
+const stats = [
+  { icon: <Users className="h-8 w-8" />, number: "50K+", label: "Happy Users", color: "text-blue-600" },
+  { icon: <TreePine className="h-8 w-8" />, number: "10K+", label: "Plants Identified", color: "text-green-600" },
+  { icon: <Award className="h-8 w-8" />, number: "95%", label: "Accuracy Rate", color: "text-purple-600" },
+  { icon: <TrendingUp className="h-8 w-8" />, number: "99%", label: "Success Rate", color: "text-orange-600" }
+]
+
+const testimonials = [
+  {
+    name: "Sarah Chen",
+    role: "Urban Gardener", 
+    content: "GreenMate's AI identified my dying plant and provided the exact care it needed. Now it's thriving!",
+    avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b714?w=64&h=64&fit=crop&crop=face",
+    rating: 5,
+    plants: 15
+  },
+  {
+    name: "Mike Rodriguez",
+    role: "Plant Enthusiast",
+    content: "The disease detection saved my entire garden collection. Incredible AI technology!",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face", 
+    rating: 5,
+    plants: 32
+  },
+  {
+    name: "Emma Thompson",
+    role: "Beginner Gardener",
+    content: "As a complete beginner, the community and care guides have been absolutely invaluable.",
+    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face",
+    rating: 5, 
+    plants: 8
+  }
+]
+
+const samplePlants = [
+  {
+    plantName: "Monstera Deliciosa",
+    plantType: "Tropical",
+    health: 92,
+    lastWatered: new Date('2024-01-05'),
+    image: "https://images.unsplash.com/photo-1545241047-6083a3684587?w=400&h=300&fit=crop"
+  },
+  {
+    plantName: "Snake Plant",
+    plantType: "Succulent",
+    health: 87,
+    lastWatered: new Date('2024-01-02'),
+    image: "https://images.unsplash.com/photo-1593691509543-c55fb32d8de5?w=400&h=300&fit=crop"
+  },
+  {
+    plantName: "Fiddle Leaf Fig",
+    plantType: "Tropical",
+    health: 73,
+    lastWatered: new Date('2024-01-04'),
+    image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop"
+  }
+]
+
+export default function HomePage() {
+  const [hoveredFeature, setHoveredFeature] = useState<number | null>(null)
+
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-green-50">
+      {/* Enhanced Navigation */}
+      <motion.header 
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.6 }}
+        className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-lg border-b border-emerald-100 shadow-lg"
+      >
+        <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+          <motion.div 
+            whileHover={{ scale: 1.05 }}
+            className="flex items-center space-x-3"
+          >
+            <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+              <Leaf className="h-7 w-7 text-white" />
+            </div>
+            <span className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
+              GreenMate
+            </span>
+          </motion.div>
+          
+          <div className="hidden md:flex items-center space-x-8">
+            {[
+              { href: "/demo/disease-detection", label: "Disease Detection", icon: <Microscope className="h-4 w-4" /> },
+              { href: "/demo/weather-care", label: "Weather Care", icon: <Cloud className="h-4 w-4" /> },
+              { href: "/demo/community", label: "Community", icon: <MessageCircle className="h-4 w-4" /> },
+              { href: "/demo/marketplace", label: "Marketplace", icon: <ShoppingBag className="h-4 w-4" /> },
+              { href: "/demo/notifications", label: "Notifications", icon: <Bell className="h-4 w-4" /> }
+            ].map((item, index) => (
+              <motion.div key={item.href} whileHover={{ scale: 1.05 }}>
+                <Link 
+                  href={item.href} 
+                  className="flex items-center space-x-2 text-gray-700 hover:text-emerald-600 transition-all duration-200 font-medium group"
+                >
+                  <span className="group-hover:text-emerald-500 transition-colors">{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              </motion.div>
+            ))}
+            
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Link 
+                href="/demo/dashboard"
+                className="bg-gradient-to-r from-emerald-500 to-green-600 text-white px-6 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center space-x-2"
+              >
+                <Play className="h-4 w-4" />
+                <span>Try Demo</span>
+              </Link>
+            </motion.div>
+          </div>
+        </nav>
+      </motion.header>
+
+      {/* Hero Section */}
+      <Hero
+        title="Your Smart Plant Companion"
+        subtitle="🌱 GreenMate"
+        description="AI-powered plant recognition, personalized care guides, and community platform for plant enthusiasts"
+        primaryCta={{
+          text: "Try Plant Recognition",
+          onClick: () => window.location.href = '/demo/recognition'
+        }}
+        secondaryCta={{
+          text: "View Dashboard Demo",
+          onClick: () => window.location.href = '/demo/dashboard'
+        }}
+        animated
+      />
+
+      {/* Features Section */}
+      <section className="py-24 bg-gradient-to-b from-white to-primary-50/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center space-x-2 bg-primary-100 text-primary-700 px-4 py-2 rounded-full text-sm font-medium mb-4 animate-fade-in-up">
+              <Sparkles className="h-4 w-4" />
+              <span>Powerful Features</span>
+            </div>
+            <h2 className="text-4xl md:text-5xl font-bold font-heading gradient-text mb-4 animate-fade-in-up">
+              Everything You Need for Plant Care
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto animate-fade-in-up">
+              From AI-powered identification to personalized care guides, GreenMate has everything you need to keep your plants healthy and thriving.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
+              <div
+                key={feature.title}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <Card variant="soft" hover="lift" className="h-full group cursor-pointer">
+                  <CardHeader className="text-center">
+                    <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br ${feature.gradient} text-white flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                      {feature.icon}
+                    </div>
+                    <CardTitle className="text-xl font-heading">{feature.title}</CardTitle>
+                    <CardDescription className="text-center">
+                      {feature.description}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Plant Collection Preview */}
+      <section className="py-24 bg-gradient-to-b from-primary-50/30 to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold font-heading gradient-text mb-4 animate-fade-in-up">
+              Track Your Plant Collection
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto animate-fade-in-up">
+              Monitor your plants' health, track watering schedules, and get personalized care recommendations.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {samplePlants.map((plant, index) => (
+              <div
+                key={plant.plantName}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <PlantCard
+                  {...plant}
+                  onWater={() => console.log(`Water ${plant.plantName}`)}
+                  onViewDetails={() => console.log(`View ${plant.plantName}`)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-24 bg-gradient-to-br from-primary-50 to-accent-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-bold font-heading gradient-text mb-4 animate-fade-in-up">
+              Loved by Plant Enthusiasts
+            </h2>
+            <p className="text-xl text-muted-foreground animate-fade-in-up">
+              Join thousands of happy plant parents worldwide
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <div
+                key={testimonial.name}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <Card variant="glass" className="p-6 backdrop-blur-md">
+                  <div className="flex items-center mb-4">
+                    <img
+                      src={testimonial.avatar}
+                      alt={testimonial.name}
+                      className="w-12 h-12 rounded-full mr-4"
+                    />
+                    <div>
+                      <h4 className="font-semibold text-foreground">{testimonial.name}</h4>
+                      <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                    </div>
+                  </div>
+                  <p className="text-foreground mb-4">"{testimonial.content}"</p>
+                  <div className="flex space-x-1">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-24 bg-gradient-to-r from-primary-500 to-primary-600 text-white relative overflow-hidden">
+        <div className="absolute inset-0 plant-pattern opacity-10" />
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold font-heading mb-6 animate-fade-in-up">
+            Start Your Plant Journey Today
+          </h2>
+          <p className="text-xl text-primary-100 mb-8 max-w-2xl mx-auto animate-fade-in-up">
+            Join thousands of plant enthusiasts who trust GreenMate to keep their plants healthy and thriving.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up">
+            <Button
+              variant="secondary"
+              size="xl"
+              className="bg-white text-primary-600 hover:bg-primary-50 shadow-xl"
+              rightIcon={<Camera className="h-5 w-5" />}
+              onClick={() => window.location.href = '/demo/recognition'}
+            >
+              Try Plant Recognition
+            </Button>
+            <Button
+              variant="glass"
+              size="xl"
+              className="border-white/30 hover:bg-white/20"
+              rightIcon={<Play className="h-5 w-5" />}
+              onClick={() => window.location.href = '/demo/dashboard'}
+            >
+              View Dashboard
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-12 bg-gray-50 border-t">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between">
+            <div className="flex items-center space-x-2 mb-4 md:mb-0">
+              <Leaf className="h-6 w-6 text-primary-600" />
+              <span className="text-xl font-heading font-bold text-foreground">GreenMate</span>
+            </div>
+            <div className="flex items-center space-x-6 text-sm text-muted-foreground">
+              <span>&copy; 2025 GreenMate</span>
+              <span>Made with 💚 for plant lovers</span>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </main>
+  )
+}
+
