@@ -1,0 +1,601 @@
+// Prisma schema for GreenMate
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  EXPERT
+}
+
+enum PlantDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum PlantSize {
+  SMALL
+  MEDIUM
+  LARGE
+}
+
+enum LightRequirement {
+  LOW
+  MEDIUM
+  HIGH
+  DIRECT
+}
+
+enum WateringFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum PlantPurpose {
+  DECORATIVE
+  AIR_FILTERING
+  EDIBLE
+  MEDICINAL
+  AROMATIC
+}
+
+enum PostType {
+  GENERAL
+  HELP_REQUEST
+  SUCCESS_STORY
+  PLANT_SHOWCASE
+}
+
+// User Management
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  password  String?  // Optional for social login
+  role      UserRole @default(USER)
+  
+  // Profile Information
+  profile   UserProfile?
+  
+  // Plant Collection
+  userPlants        UserPlant[]
+  recognitionHistory PlantRecognition[]
+  
+  // Community
+  posts             Post[]
+  comments          Comment[]
+  likes             Like[]
+  followers         Follow[] @relation("UserFollowers")
+  following         Follow[] @relation("UserFollowing")
+  
+  // Marketplace
+  listings          MarketplaceListing[]
+  purchases         Purchase[]
+  reviews           Review[]
+  
+  // Gamification
+  gamification      UserGamification?
+  achievements      UserAchievement[]
+  
+  // Disease Detection
+  diseaseHistory    DiseaseDetection[]
+  
+  // Notifications
+  notifications     Notification[]
+  
+  // Authentication
+  accounts          Account[]
+  sessions          Session[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("users")
+}
+
+model UserProfile {
+  id           String          @id @default(cuid())
+  userId       String          @unique
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  firstName    String?
+  lastName     String?
+  avatar       String?
+  bio          String?
+  location     String?
+  experience   ExperienceLevel @default(BEGINNER)
+  
+  // Preferences
+  preferences  Json? // Store plant preferences, notification settings, etc.
+  
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  
+  @@map("user_profiles")
+}
+
+// Plant Master Data
+model Plant {
+  id             String    @id @default(cuid())
+  name           String    @db.VarChar(255)
+  scientificName String    @db.VarChar(255)
+  family         String?   @db.VarChar(255)
+  commonNames    String[]  // Array of alternative names
+  
+  // Care Information
+  care           PlantCare?
+  
+  // Characteristics
+  difficulty     PlantDifficulty
+  size           PlantSize
+  purposes       PlantPurpose[]
+  climateZones   String[]  // USDA zones or climate types
+  
+  // Media
+  images         String[]  // Array of image URLs
+  
+  // Additional Information
+  description    String?   @db.Text
+  medicinalUses  String[]
+  toxicity       String?   // Toxicity information
+  commonIssues   String[]  // Common problems and solutions
+  
+  // Sustainability
+  co2Absorption      Float?  // kg per year
+  oxygenProduction   Float?  // liters per day
+  
+  // Relations
+  userPlants         UserPlant[]
+  recognitions       PlantRecognition[]
+  posts              Post[]
+  diseaseDetections  DiseaseDetection[]
+  marketplaceListings MarketplaceListing[]
+  
+  // Metadata
+  isVerified     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  @@map("plants")
+  @@index([name])
+  @@index([scientificName])
+  @@index([difficulty])
+  @@index([size])
+}
+
+model PlantCare {
+  id          String            @id @default(cuid())
+  plantId     String            @unique
+  plant       Plant             @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  
+  // Light Requirements
+  lightRequirement LightRequirement
+  lightHours       Int?          // Hours of light per day
+  
+  // Watering
+  wateringFrequency WateringFrequency
+  wateringAmount    String?       // e.g., "200ml", "until drainage"
+  
+  // Environment
+  humidity          Int?          // Preferred humidity percentage
+  tempMin           Int?          // Minimum temperature (Celsius)
+  tempMax           Int?          // Maximum temperature (Celsius)
+  
+  // Soil & Fertilizer
+  soilType          String?
+  fertilizingFreq   String?
+  repottingFreq     String?
+  
+  // Seasonal Care
+  seasonalCare      Json?         // Different care for seasons
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  
+  @@map("plant_care")
+}
+
+// User's Plant Collection
+model UserPlant {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plantId         String
+  plant           Plant     @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  
+  // Custom Information
+  nickname        String?
+  notes           String?   @db.Text
+  acquiredDate    DateTime  @default(now())
+  location        String?   // Where plant is kept (living room, bedroom, etc.)
+  
+  // Care Tracking
+  lastWatered     DateTime?
+  lastFertilized  DateTime?
+  lastRepotted    DateTime?
+  
+  // Custom Images
+  images          String[]  // User's photos of their plant
+  
+  // Health Status
+  healthStatus    String?   // healthy, sick, recovering, etc.
+  
+  // Reminders
+  reminders       PlantReminder[]
+  careLog         CareLog[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("user_plants")
+  @@index([userId])
+  @@index([plantId])
+}
+
+model PlantReminder {
+  id           String     @id @default(cuid())
+  userPlantId  String
+  userPlant    UserPlant  @relation(fields: [userPlantId], references: [id], onDelete: Cascade)
+  
+  type         String     // water, fertilize, repot, etc.
+  frequency    String     // daily, weekly, monthly, etc.
+  nextDue      DateTime
+  isActive     Boolean    @default(true)
+  
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  @@map("plant_reminders")
+  @@index([nextDue])
+  @@index([isActive])
+}
+
+model CareLog {
+  id          String    @id @default(cuid())
+  userPlantId String
+  userPlant   UserPlant @relation(fields: [userPlantId], references: [id], onDelete: Cascade)
+  
+  action      String    // watered, fertilized, repotted, etc.
+  notes       String?
+  images      String[]  // Before/after photos
+  
+  createdAt   DateTime  @default(now())
+  
+  @@map("care_logs")
+  @@index([userPlantId])
+  @@index([createdAt])
+}
+
+// Plant Recognition
+model PlantRecognition {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  // Input
+  imageUrl    String
+  
+  // Results
+  plantId     String?
+  plant       Plant?   @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  confidence  Float
+  
+  // Alternative suggestions
+  suggestions Json?    // Array of other possible plants with confidence scores
+  
+  // API Response
+  apiResponse Json?    // Full response from PlantNet API
+  
+  createdAt   DateTime @default(now())
+  
+  @@map("plant_recognitions")
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Disease Detection
+model DiseaseDetection {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  plantId     String?
+  plant       Plant?   @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  
+  // Input
+  imageUrl    String
+  
+  // Results
+  disease     String?
+  confidence  Float
+  severity    String?  // mild, moderate, severe
+  
+  // Treatment
+  treatment   String?  @db.Text
+  
+  // Progress Tracking
+  isResolved  Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("disease_detections")
+  @@index([userId])
+  @@index([plantId])
+}
+
+// Community Features
+model Post {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plantId   String?
+  plant     Plant?   @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  
+  type      PostType @default(GENERAL)
+  title     String?
+  content   String   @db.Text
+  images    String[] // Array of image URLs
+  tags      String[] // Hashtags and categories
+  
+  // Engagement
+  likes     Like[]
+  comments  Comment[]
+  
+  // Moderation
+  isPublished Boolean @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("posts")
+  @@index([userId])
+  @@index([plantId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Comment {
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId  String
+  post    Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  content String @db.Text
+  
+  // Nested Comments
+  parentId String?
+  parent   Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("comments")
+  @@index([postId])
+  @@index([userId])
+}
+
+model Like {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, postId])
+  @@map("likes")
+}
+
+model Follow {
+  id          String @id @default(cuid())
+  followerId  String
+  followingId String
+  
+  follower    User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+// Gamification
+model UserGamification {
+  id       String @id @default(cuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  points   Int    @default(0)
+  streak   Int    @default(0)
+  level    Int    @default(1)
+  
+  // Statistics
+  plantsOwned      Int @default(0)
+  plantsIdentified Int @default(0)
+  postsCreated     Int @default(0)
+  helpfulVotes     Int @default(0)
+  
+  lastActivity     DateTime @default(now())
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  @@map("user_gamification")
+}
+
+model Achievement {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String
+  icon        String?
+  points      Int    @default(0)
+  
+  // Conditions for earning
+  conditions  Json   // Flexible conditions (plants owned, streak days, etc.)
+  
+  // Users who earned this
+  userAchievements UserAchievement[]
+  
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  
+  earnedAt      DateTime    @default(now())
+  
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+// Marketplace (Future Phase)
+model MarketplaceListing {
+  id          String @id @default(cuid())
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plantId     String?
+  plant       Plant? @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  
+  title       String
+  description String @db.Text
+  price       Float
+  images      String[]
+  location    String?
+  
+  // Status
+  isActive    Boolean @default(true)
+  isSold      Boolean @default(false)
+  
+  // Relations
+  purchases   Purchase[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("marketplace_listings")
+  @@index([userId])
+  @@index([plantId])
+  @@index([isActive])
+}
+
+model Purchase {
+  id        String             @id @default(cuid())
+  buyerId   String
+  buyer     User               @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  listingId String
+  listing   MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  
+  amount    Float
+  status    String             @default("pending") // pending, completed, cancelled
+  
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  
+  @@map("purchases")
+}
+
+model Review {
+  id         String @id @default(cuid())
+  reviewerId String
+  reviewer   User   @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
+  
+  rating     Int    // 1-5 stars
+  comment    String?
+  
+  // Can review sellers, buyers, or plants
+  targetType String // seller, buyer, plant
+  targetId   String
+  
+  createdAt  DateTime @default(now())
+  
+  @@map("reviews")
+  @@index([reviewerId])
+  @@index([targetId])
+}
+
+// Notifications
+model Notification {
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type    String  // reminder, like, comment, follow, etc.
+  title   String
+  message String
+  data    Json?   // Additional data (post ID, plant ID, etc.)
+  
+  isRead  Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("notifications")
+  @@index([userId])
+  @@index([isRead])
+}
+
+// NextAuth.js Models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
