@@ -76,13 +76,20 @@ export default function MarketplacePage() {
       if (sortBy) params.append('sortBy', sortBy)
 
       const response = await fetch(`http://localhost:3001/api/marketplace/listings?${params}`)
-      const data = await response.json()
-      
-      if (data.success) {
-        setListings(data.data)
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success) {
+          setListings(data.data)
+        }
+      } else {
+        // Set empty listings if API is not available
+        setListings([])
       }
     } catch (error) {
       console.error('Error fetching listings:', error)
+      // Set empty listings on error
+      setListings([])
     } finally {
       setLoading(false)
     }
@@ -91,13 +98,30 @@ export default function MarketplacePage() {
   const fetchStats = async () => {
     try {
       const response = await fetch('http://localhost:3001/api/marketplace/stats')
-      const data = await response.json()
-      
-      if (data.success) {
-        setStats(data.data)
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success) {
+          setStats(data.data)
+        }
+      } else {
+        // Set default stats if API is not available
+        setStats({
+          totalListings: 0,
+          totalSales: 0,
+          averagePrice: 0,
+          popularCategories: []
+        })
       }
     } catch (error) {
       console.error('Error fetching stats:', error)
+      // Set default stats on error
+      setStats({
+        totalListings: 0,
+        totalSales: 0,
+        averagePrice: 0,
+        popularCategories: []
+      })
     }
   }
 
@@ -169,7 +193,7 @@ export default function MarketplacePage() {
             <div className="bg-white rounded-2xl shadow-xl p-6 text-center">
               <div className="text-3xl mb-2">🔥</div>
               <div className="text-2xl font-bold text-gray-900">
-                {stats.popularCategories[0]?.category || 'N/A'}
+                {stats.popularCategories?.[0]?.category || 'N/A'}
               </div>
               <p className="text-gray-600">Top Category</p>
             </div>
@@ -391,7 +415,7 @@ export default function MarketplacePage() {
         </div>
 
         {/* Popular Categories Section */}
-        {stats?.popularCategories && (
+        {stats?.popularCategories && stats.popularCategories.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

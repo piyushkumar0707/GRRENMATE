@@ -36,13 +36,18 @@ export default function NotificationsPage() {
       if (filter !== 'all') params.append('type', filter)
 
       const response = await fetch(`http://localhost:3001/api/notifications?${params}`)
-      const data = await response.json()
-      
-      if (data.success) {
-        setNotifications(data.data)
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success) {
+          setNotifications(data.data)
+        }
+      } else {
+        setNotifications([])
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
+      setNotifications([])
     } finally {
       setLoading(false)
     }
@@ -51,13 +56,18 @@ export default function NotificationsPage() {
   const fetchUnreadCount = async () => {
     try {
       const response = await fetch('http://localhost:3001/api/notifications/unread-count')
-      const data = await response.json()
-      
-      if (data.success) {
-        setUnreadCount(data.data.count)
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success) {
+          setUnreadCount(data.data.count)
+        }
+      } else {
+        setUnreadCount(0)
       }
     } catch (error) {
       console.error('Error fetching unread count:', error)
+      setUnreadCount(0)
     }
   }
 

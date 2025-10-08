@@ -69,13 +69,18 @@ export default function CommunityPage() {
         : 'http://localhost:3001/api/community/posts'
       
       const response = await fetch(url)
-      const data = await response.json()
-      
-      if (data.success) {
-        setPosts(data.data)
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success) {
+          setPosts(data.data)
+        }
+      } else {
+        setPosts([])
       }
     } catch (error) {
       console.error('Error fetching posts:', error)
+      setPosts([])
     } finally {
       setLoading(false)
     }
@@ -84,26 +89,36 @@ export default function CommunityPage() {
   const fetchTrendingTags = async () => {
     try {
       const response = await fetch('http://localhost:3001/api/community/trending-tags')
-      const data = await response.json()
-      
-      if (data.success) {
-        setTrendingTags(data.data)
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success) {
+          setTrendingTags(data.data)
+        }
+      } else {
+        setTrendingTags([])
       }
     } catch (error) {
       console.error('Error fetching trending tags:', error)
+      setTrendingTags([])
     }
   }
 
   const fetchExperts = async () => {
     try {
       const response = await fetch('http://localhost:3001/api/community/experts')
-      const data = await response.json()
-      
-      if (data.success) {
-        setExperts(data.data)
+      if (response.ok) {
+        const data = await response.json()
+        
+        if (data.success) {
+          setExperts(data.data)
+        }
+      } else {
+        setExperts([])
       }
     } catch (error) {
       console.error('Error fetching experts:', error)
+      setExperts([])
     }
   }
 
