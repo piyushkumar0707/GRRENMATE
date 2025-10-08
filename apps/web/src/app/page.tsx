@@ -57,6 +57,14 @@ const features = [
     gradient: "from-teal-500 to-emerald-600", 
     link: "/demo/notifications",
     delay: 0.6
+  },
+  {
+    icon: <Bot className="h-8 w-8" />,
+    title: "AI Plant Assistant",
+    description: "Chat with our intelligent AI for instant plant care advice and expert guidance.",
+    gradient: "from-indigo-500 to-purple-600",
+    link: "/demo/chatbot",
+    delay: 0.7
   }
 ]
 
@@ -125,7 +133,7 @@ export default function HomePage() {
               { href: "/demo/weather-care", label: "Weather Care", icon: <Cloud className="h-4 w-4" /> },
               { href: "/demo/community", label: "Community", icon: <MessageCircle className="h-4 w-4" /> },
               { href: "/demo/marketplace", label: "Marketplace", icon: <ShoppingBag className="h-4 w-4" /> },
-              { href: "/demo/notifications", label: "Notifications", icon: <Bell className="h-4 w-4" /> }
+              { href: "/demo/chatbot", label: "AI Chat", icon: <Bot className="h-4 w-4" /> }
             ].map((item, index) => (
               <motion.div key={item.href} whileHover={{ scale: 1.05 }}>
                 <Link 
@@ -280,7 +288,7 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {features.map((feature, index) => (
               <motion.div
                 key={feature.title}
