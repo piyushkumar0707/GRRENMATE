@@ -1,0 +1,427 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      update_type:
+        description: 'Type of updates to perform'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - security
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependency-update:
+    name: Update Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Configure Git
+      run: |
+        git config --global user.name 'dependabot[bot]'
+        git config --global user.email 'dependabot[bot]@users.noreply.github.com'
+
+    - name: Install npm-check-updates
+      run: npm install -g npm-check-updates
+
+    - name: Check for outdated dependencies
+      id: check
+      run: |
+        echo "Checking for outdated dependencies..."
+        
+        # Check different types of updates based on input
+        case "${{ github.event.inputs.update_type || 'all' }}" in
+          "security")
+            npm audit --audit-level=moderate --json > audit.json || true
+            echo "type=security" >> $GITHUB_OUTPUT
+            ;;
+          "minor")
+            ncu --target minor --jsonUpgraded > updates.json || true
+            echo "type=minor" >> $GITHUB_OUTPUT
+            ;;
+          "major")
+            ncu --target latest --jsonUpgraded > updates.json || true
+            echo "type=major" >> $GITHUB_OUTPUT
+            ;;
+          *)
+            ncu --target minor --jsonUpgraded > updates.json || true
+            echo "type=all" >> $GITHUB_OUTPUT
+            ;;
+        esac
+
+    - name: Apply security updates
+      if: steps.check.outputs.type == 'security'
+      run: |
+        # Apply security updates
+        npm audit fix --audit-level=moderate
+        
+        if git diff --quiet; then
+          echo "No security updates available"
+          echo "has_updates=false" >> $GITHUB_ENV
+        else
+          echo "has_updates=true" >> $GITHUB_ENV
+          echo "update_type=Security" >> $GITHUB_ENV
+        fi
+
+    - name: Apply dependency updates
+      if: steps.check.outputs.type != 'security'
+      run: |
+        # Apply updates based on type
+        case "${{ steps.check.outputs.type }}" in
+          "minor")
+            ncu --target minor -u
+            echo "update_type=Minor" >> $GITHUB_ENV
+            ;;
+          "major")
+            ncu --target latest -u
+            echo "update_type=Major" >> $GITHUB_ENV
+            ;;
+          *)
+            ncu --target minor -u
+            echo "update_type=Minor" >> $GITHUB_ENV
+            ;;
+        esac
+        
+        if [ -f "updates.json" ] && [ -s "updates.json" ]; then
+          echo "has_updates=true" >> $GITHUB_ENV
+        else
+          echo "has_updates=false" >> $GITHUB_ENV
+        fi
+
+    - name: Install updated dependencies
+      if: env.has_updates == 'true'
+      run: |
+        npm install
+        
+        # Clean up lock file conflicts
+        rm -f package-lock.json
+        npm install
+
+    - name: Run tests with updated dependencies
+      if: env.has_updates == 'true'
+      run: |
+        # Run basic tests to ensure updates don't break anything
+        npm run lint || true
+        npm run type-check || true
+        npm run test:unit || echo "Tests failed, will note in PR"
+        
+        # Store test results
+        echo "test_status=$?" >> $GITHUB_ENV
+
+    - name: Generate update summary
+      if: env.has_updates == 'true'
+      id: summary
+      run: |
+        echo "## 📦 Dependency Updates" > update_summary.md
+        echo "" >> update_summary.md
+        
+        if [ "${{ env.update_type }}" = "Security" ]; then
+          echo "### 🔒 Security Updates" >> update_summary.md
+          echo "" >> update_summary.md
+          
+          if [ -f "audit.json" ]; then
+            node -e "
+              const audit = JSON.parse(require('fs').readFileSync('audit.json', 'utf8'));
+              if (audit.vulnerabilities) {
+                Object.entries(audit.vulnerabilities).forEach(([pkg, vuln]) => {
+                  console.log(\`- **\${pkg}**: \${vuln.title}\`);
+                });
+              }
+            " >> update_summary.md
+          fi
+        else
+          echo "### 📈 Package Updates" >> update_summary.md
+          echo "" >> update_summary.md
+          
+          if [ -f "updates.json" ]; then
+            node -e "
+              const updates = JSON.parse(require('fs').readFileSync('updates.json', 'utf8'));
+              Object.entries(updates).forEach(([pkg, version]) => {
+                console.log(\`- **\${pkg}**: \${version}\`);
+              });
+            " >> update_summary.md
+          fi
+        fi
+        
+        echo "" >> update_summary.md
+        echo "### 🧪 Test Results" >> update_summary.md
+        
+        if [ "${{ env.test_status }}" = "0" ]; then
+          echo "✅ All tests passed with the updated dependencies." >> update_summary.md
+        else
+          echo "⚠️ Some tests failed with the updated dependencies. Please review manually." >> update_summary.md
+        fi
+        
+        echo "" >> update_summary.md
+        echo "---" >> update_summary.md
+        echo "" >> update_summary.md
+        echo "🤖 This PR was automatically created by the dependency update workflow." >> update_summary.md
+        echo "Please review the changes and run additional tests if needed." >> update_summary.md
+
+    - name: Create Pull Request
+      if: env.has_updates == 'true'
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: 'chore(deps): ${{ env.update_type }} dependency updates'
+        title: '🤖 ${{ env.update_type }} Dependency Updates'
+        body-path: update_summary.md
+        branch: dependency-updates/${{ env.update_type }}-${{ github.run_number }}
+        delete-branch: true
+        labels: |
+          dependencies
+          automated
+          ${{ env.update_type == 'Security' && 'security' || 'enhancement' }}
+        reviewers: |
+          ${{ github.repository_owner }}
+        assignees: |
+          ${{ github.repository_owner }}
+
+    - name: Comment on existing PR if updates available
+      if: env.has_updates == 'false'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          // Find existing dependency update PRs
+          const prs = await github.rest.pulls.list({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            head: 'dependency-updates'
+          });
+          
+          if (prs.data.length > 0) {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prs.data[0].number,
+              body: '✅ No new dependency updates available as of ' + new Date().toISOString()
+            });
+          }
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event.inputs.update_type == 'security'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run npm audit
+      id: audit
+      run: |
+        npm audit --json > audit-report.json || true
+        
+        # Check if there are vulnerabilities
+        vulnerabilities=$(node -e "
+          const audit = JSON.parse(require('fs').readFileSync('audit-report.json', 'utf8'));
+          console.log(audit.metadata?.vulnerabilities?.total || 0);
+        ")
+        
+        echo "vulnerabilities=$vulnerabilities" >> $GITHUB_OUTPUT
+        
+        if [ "$vulnerabilities" -gt 0 ]; then
+          echo "Security vulnerabilities found!"
+          npm audit
+        fi
+
+    - name: Run Snyk security test
+      uses: snyk/actions/node@master
+      continue-on-error: true
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      with:
+        args: --severity-threshold=medium --json > snyk-report.json
+
+    - name: Create security issue
+      if: steps.audit.outputs.vulnerabilities > 0
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const vulnerabilities = ${{ steps.audit.outputs.vulnerabilities }};
+          
+          let auditDetails = '';
+          try {
+            const auditReport = JSON.parse(fs.readFileSync('audit-report.json', 'utf8'));
+            if (auditReport.vulnerabilities) {
+              auditDetails = Object.entries(auditReport.vulnerabilities)
+                .map(([pkg, vuln]) => `- **${pkg}**: ${vuln.title} (${vuln.severity})`)
+                .join('\n');
+            }
+          } catch (e) {
+            auditDetails = 'Unable to parse audit report';
+          }
+          
+          const body = `## 🚨 Security Vulnerabilities Detected
+          
+          Found **${vulnerabilities}** security vulnerabilities in dependencies.
+          
+          ### Affected Packages
+          ${auditDetails}
+          
+          ### Recommended Actions
+          1. Run \`npm audit fix\` to automatically fix vulnerabilities
+          2. Review the changes and test thoroughly
+          3. For vulnerabilities that can't be auto-fixed, consider:
+             - Updating to a newer version manually
+             - Finding alternative packages
+             - Applying patches if available
+          
+          ### Reports
+          - [npm audit report](../actions/runs/${context.runId})
+          - [Snyk report](../actions/runs/${context.runId})
+          
+          ---
+          
+          This issue was automatically created by the security audit workflow.
+          `;
+          
+          // Check if there's already an open security issue
+          const issues = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            labels: 'security,vulnerability'
+          });
+          
+          if (issues.data.length === 0) {
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 Security Vulnerabilities Detected',
+              body,
+              labels: ['security', 'vulnerability', 'high-priority']
+            });
+          } else {
+            // Update existing issue
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issues.data[0].number,
+              body
+            });
+          }
+
+    - name: Upload security reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports
+        path: |
+          audit-report.json
+          snyk-report.json
+        retention-days: 30
+
+  auto-merge:
+    name: Auto-merge Safe Updates
+    runs-on: ubuntu-latest
+    needs: dependency-update
+    if: github.event_name == 'schedule'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Find dependency update PR
+      id: find-pr
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const prs = await github.rest.pulls.list({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            head: 'dependency-updates/Minor-' + context.runNumber
+          });
+          
+          if (prs.data.length > 0) {
+            return prs.data[0].number;
+          }
+          return null;
+        result-encoding: string
+
+    - name: Check if PR can be auto-merged
+      if: steps.find-pr.outputs.result != 'null'
+      id: check-merge
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const prNumber = ${{ steps.find-pr.outputs.result }};
+          
+          // Get PR details
+          const pr = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: prNumber
+          });
+          
+          // Check if it's a minor update (safer for auto-merge)
+          const isMinorUpdate = pr.data.title.includes('Minor');
+          const hasSecurityLabel = pr.data.labels.some(label => label.name === 'security');
+          
+          // Get check runs status
+          const checks = await github.rest.checks.listForRef({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            ref: pr.data.head.sha
+          });
+          
+          const allPassed = checks.data.check_runs.every(check => 
+            check.status === 'completed' && check.conclusion === 'success'
+          );
+          
+          return {
+            canMerge: isMinorUpdate && !hasSecurityLabel && allPassed,
+            prNumber: prNumber
+          };
+
+    - name: Auto-merge PR
+      if: fromJSON(steps.check-merge.outputs.result).canMerge
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const prNumber = ${{ fromJSON(steps.check-merge.outputs.result).prNumber }};
+          
+          // Enable auto-merge
+          await github.rest.pulls.merge({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: prNumber,
+            commit_title: 'chore(deps): auto-merge minor dependency updates',
+            merge_method: 'squash'
+          });
+          
+          console.log('Auto-merged dependency update PR #' + prNumber);

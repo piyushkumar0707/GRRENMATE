@@ -62,6 +62,23 @@ enum PostType {
   PLANT_SHOWCASE
 }
 
+// Care Streak Tracking
+model CareStreak {
+  id            String @id @default(cuid())
+  userId        String
+  user          User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  currentStreak Int    @default(0)
+  longestStreak Int    @default(0)
+  lastCareDate  DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("care_streaks")
+  @@index([userId])
+}
+
 // User Management
 model User {
   id        String   @id @default(cuid())
@@ -69,9 +86,18 @@ model User {
   username  String   @unique
   password  String?  // Optional for social login
   role      UserRole @default(USER)
+  name      String?
+  bio       String?
+  location  String?
+  avatar    String?
+  isExpert  Boolean  @default(false)
+  expertiseAreas String[]
+  lastActiveAt   DateTime @default(now())
   
   // Profile Information
-  profile   UserProfile?
+  profile       UserProfile?
+  preferences   Json? // User preferences, settings, etc.
+  gamification  UserGamification?
   
   // Plant Collection
   userPlants        UserPlant[]
@@ -90,7 +116,7 @@ model User {
   reviews           Review[]
   
   // Gamification
-  gamification      UserGamification?
+  careStreaks       CareStreak[]
   achievements      UserAchievement[]
   
   // Disease Detection
@@ -98,6 +124,24 @@ model User {
   
   // Notifications
   notifications     Notification[]
+  
+  // Real-time Collaboration
+  chatRooms         ChatRoom[]
+  chatMessages      ChatMessage[]
+  chatParticipants  ChatParticipant[]
+  messageReactions  MessageReaction[]
+  socialActivities  SocialActivity[]
+  activityLikes     ActivityLike[]
+  activityComments  ActivityComment[]
+  hostedSessions    LiveSession[]
+  sessionParticipants SessionParticipant[]
+  sessionMessages   SessionMessage[]
+  presence          UserPresence?
+  tasksCreated      CollaborativeTask[] @relation("TasksCreated")
+  tasksAssigned     CollaborativeTask[] @relation("TasksAssigned")
+  taskCollaborations TaskCollaborator[]
+  taskUpdates       TaskUpdate[]
+  refreshTokens     RefreshToken[]
   
   // Authentication
   accounts          Account[]
@@ -166,6 +210,9 @@ model Plant {
   posts              Post[]
   diseaseDetections  DiseaseDetection[]
   marketplaceListings MarketplaceListing[]
+  chatRooms          ChatRoom[]
+  socialActivities    SocialActivity[]
+  collaborativeTasks CollaborativeTask[]
   
   // Metadata
   isVerified     Boolean   @default(false)
@@ -177,6 +224,9 @@ model Plant {
   @@index([scientificName])
   @@index([difficulty])
   @@index([size])
+  @@index([difficulty, size])
+  @@index([isVerified])
+  @@index([createdAt])
 }
 
 model PlantCare {
@@ -246,6 +296,8 @@ model UserPlant {
   @@map("user_plants")
   @@index([userId])
   @@index([plantId])
+  @@index([userId, plantId])
+  @@index([acquiredDate])
 }
 
 model PlantReminder {
@@ -356,6 +408,7 @@ model Post {
   // Engagement
   likes     Like[]
   comments  Comment[]
+  socialActivities SocialActivity[]
   
   // Moderation
   isPublished Boolean @default(true)
@@ -368,6 +421,9 @@ model Post {
   @@index([plantId])
   @@index([type])
   @@index([createdAt])
+  @@index([createdAt(sort: Desc)], map: "posts_created_at_desc_idx")
+  @@index([isPublished, createdAt])
+  @@index([userId, createdAt])
 }
 
 model Comment {
@@ -473,6 +529,7 @@ model UserAchievement {
   
   @@unique([userId, achievementId])
   @@map("user_achievements")
+  @@index([userId, earnedAt])
 }
 
 // Marketplace (Future Phase)
@@ -558,6 +615,326 @@ model Notification {
   @@map("notifications")
   @@index([userId])
   @@index([isRead])
+  @@index([userId, isRead])
+}
+
+// Real-time Collaboration Features
+model ChatRoom {
+  id          String @id @default(cuid())
+  name        String
+  description String?
+  type        String @default("public") // public, private, plant_community, expert_help
+  
+  // Plant community room
+  plantId     String?
+  plant       Plant? @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  
+  // Room metadata
+  maxParticipants Int?    @default(50)
+  isActive        Boolean @default(true)
+  
+  // Relations
+  messages        ChatMessage[]
+  participants    ChatParticipant[]
+  
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("chat_rooms")
+  @@index([type])
+  @@index([plantId])
+  @@index([isActive])
+}
+
+model ChatMessage {
+  id       String @id @default(cuid())
+  content  String @db.Text
+  type     String @default("text") // text, image, plant_share, care_log, system
+  metadata Json?  // Additional data for special message types
+  
+  // Relations
+  roomId String
+  room   ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Message features
+  reactions    MessageReaction[]
+  edited       Boolean          @default(false)
+  editedAt     DateTime?
+  replyToId    String?
+  replyTo      ChatMessage?     @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      ChatMessage[]    @relation("MessageReplies")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("chat_messages")
+  @@index([roomId, createdAt])
+  @@index([userId])
+}
+
+model ChatParticipant {
+  id       String @id @default(cuid())
+  
+  roomId   String
+  room     ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role     String   @default("member") // member, moderator, admin
+  joinedAt DateTime @default(now())
+  lastSeen DateTime @default(now())
+  
+  @@unique([roomId, userId])
+  @@map("chat_participants")
+}
+
+model MessageReaction {
+  id        String @id @default(cuid())
+  emoji     String
+  
+  messageId String
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([messageId, userId, emoji])
+  @@map("message_reactions")
+}
+
+model SocialActivity {
+  id          String @id @default(cuid())
+  type        String // plant_care, achievement, post, follow, like, comment
+  title       String
+  description String
+  imageUrl    String?
+  metadata    Json?  // Additional activity-specific data
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Plant-related activity
+  plantId String?
+  plant   Plant? @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  
+  // Post-related activity
+  postId String?
+  post   Post?  @relation(fields: [postId], references: [id], onDelete: SetNull)
+  
+  // Engagement
+  likes    ActivityLike[]
+  comments ActivityComment[]
+  
+  isPublic Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("social_activities")
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+  @@index([isPublic, createdAt])
+}
+
+model ActivityLike {
+  id         String @id @default(cuid())
+  
+  activityId String
+  activity   SocialActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  
+  userId     String
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt  DateTime @default(now())
+  
+  @@unique([activityId, userId])
+  @@map("activity_likes")
+}
+
+model ActivityComment {
+  id      String @id @default(cuid())
+  content String @db.Text
+  
+  activityId String
+  activity   SocialActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("activity_comments")
+  @@index([activityId, createdAt])
+}
+
+model LiveSession {
+  id           String @id @default(cuid())
+  title        String
+  description  String @db.Text
+  type         String // plant_tour, qa_session, care_demo, community_chat
+  
+  hostId       String
+  host         User   @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  
+  maxParticipants Int      @default(10)
+  startTime       DateTime
+  endTime         DateTime?
+  isActive        Boolean  @default(false)
+  
+  // Session data
+  sessionData  Json? // WebRTC connection info, shared screen data, etc.
+  
+  // Relations
+  participants SessionParticipant[]
+  messages     SessionMessage[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("live_sessions")
+  @@index([hostId])
+  @@index([isActive, startTime])
+}
+
+model SessionParticipant {
+  id        String @id @default(cuid())
+  
+  sessionId String
+  session   LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  
+  // Media settings
+  hasVideo  Boolean @default(false)
+  hasAudio  Boolean @default(false)
+  
+  @@unique([sessionId, userId])
+  @@map("session_participants")
+}
+
+model SessionMessage {
+  id      String @id @default(cuid())
+  content String @db.Text
+  
+  sessionId String
+  session   LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("session_messages")
+  @@index([sessionId, createdAt])
+}
+
+model UserPresence {
+  id       String @id @default(cuid())
+  userId   String @unique
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status   String @default("offline") // online, away, busy, offline
+  activity String? // browsing, plant_care, chatting, etc.
+  lastSeen DateTime @default(now())
+  
+  // Real-time connection info
+  socketId String?
+  
+  updatedAt DateTime @updatedAt
+  
+  @@map("user_presence")
+  @@index([status])
+  @@index([lastSeen])
+}
+
+model CollaborativeTask {
+  id          String @id @default(cuid())
+  title       String
+  description String @db.Text
+  status      String @default("pending") // pending, in_progress, completed
+  priority    String @default("medium") // low, medium, high
+  dueDate     DateTime?
+  
+  // Plant care collaboration
+  plantId String?
+  plant   Plant? @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  
+  createdById String
+  createdBy   User   @relation("TasksCreated", fields: [createdById], references: [id], onDelete: Cascade)
+  
+  assignedToId String?
+  assignedTo   User?  @relation("TasksAssigned", fields: [assignedToId], references: [id], onDelete: SetNull)
+  
+  collaborators TaskCollaborator[]
+  updates       TaskUpdate[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("collaborative_tasks")
+  @@index([plantId])
+  @@index([status])
+  @@index([createdById])
+  @@index([assignedToId])
+}
+
+model TaskCollaborator {
+  id     String @id @default(cuid())
+  
+  taskId String
+  task   CollaborativeTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role      String   @default("contributor") // contributor, reviewer
+  joinedAt  DateTime @default(now())
+  
+  @@unique([taskId, userId])
+  @@map("task_collaborators")
+}
+
+model TaskUpdate {
+  id      String @id @default(cuid())
+  content String @db.Text
+  
+  taskId String
+  task   CollaborativeTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@map("task_updates")
+  @@index([taskId, createdAt])
+}
+
+// JWT Refresh Tokens for Authentication
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  @@map("refresh_tokens")
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // NextAuth.js Models

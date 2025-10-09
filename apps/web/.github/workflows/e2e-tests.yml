@@ -1,0 +1,356 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  e2e-tests:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        shard: [1/4, 2/4, 3/4, 4/4]
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps ${{ matrix.browser }}
+
+    - name: Build application
+      run: npm run build
+      env:
+        NODE_ENV: production
+
+    - name: Start application server
+      run: |
+        npm run start &
+        sleep 10
+      env:
+        NODE_ENV: test
+
+    - name: Wait for server to be ready
+      run: npx wait-on http://localhost:3000 --timeout 60000
+
+    - name: Run E2E tests
+      run: npx playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
+      env:
+        CI: true
+        PLAYWRIGHT_BASE_URL: http://localhost:3000
+        TEST_ENV: ci
+
+    - name: Upload Playwright Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: playwright-report-${{ matrix.browser }}-${{ matrix.shard }}
+        path: playwright-report/
+        retention-days: 7
+
+    - name: Upload Test Results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.browser }}-${{ matrix.shard }}
+        path: test-results/
+        retention-days: 7
+
+  mobile-e2e-tests:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps chromium
+
+    - name: Build application
+      run: npm run build
+
+    - name: Start application server
+      run: |
+        npm run start &
+        sleep 10
+
+    - name: Wait for server to be ready
+      run: npx wait-on http://localhost:3000 --timeout 60000
+
+    - name: Run Mobile E2E tests
+      run: npx playwright test --config=playwright-mobile.config.ts
+      env:
+        CI: true
+        PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+    - name: Upload Mobile Test Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: mobile-playwright-report
+        path: playwright-report/
+        retention-days: 7
+
+  accessibility-tests:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps chromium
+
+    - name: Build application
+      run: npm run build
+
+    - name: Start application server
+      run: |
+        npm run start &
+        sleep 10
+
+    - name: Wait for server to be ready
+      run: npx wait-on http://localhost:3000 --timeout 60000
+
+    - name: Run Accessibility tests
+      run: npx playwright test tests/e2e/examples/performance.spec.ts --grep="Accessibility"
+      env:
+        CI: true
+        PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+    - name: Upload Accessibility Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: accessibility-report
+        path: playwright-report/
+        retention-days: 7
+
+  performance-tests:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps chromium
+
+    - name: Build application
+      run: npm run build
+      env:
+        NODE_ENV: production
+
+    - name: Start application server
+      run: |
+        npm run start &
+        sleep 10
+
+    - name: Wait for server to be ready
+      run: npx wait-on http://localhost:3000 --timeout 60000
+
+    - name: Run Performance tests
+      run: npx playwright test tests/e2e/examples/performance.spec.ts --grep="Performance"
+      env:
+        CI: true
+        PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+    - name: Upload Performance Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: performance-report
+        path: playwright-report/
+        retention-days: 7
+
+  visual-regression-tests:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright Browsers
+      run: npx playwright install --with-deps chromium
+
+    - name: Build application
+      run: npm run build
+
+    - name: Start application server
+      run: |
+        npm run start &
+        sleep 10
+
+    - name: Wait for server to be ready
+      run: npx wait-on http://localhost:3000 --timeout 60000
+
+    - name: Run Visual Regression tests
+      run: npx playwright test --config=playwright-visual.config.ts
+      env:
+        CI: true
+        PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+    - name: Upload Visual Test Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: visual-regression-report
+        path: playwright-report/
+        retention-days: 7
+
+    - name: Upload Visual Test Screenshots
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: visual-regression-screenshots
+        path: test-results/
+        retention-days: 7
+
+  merge-reports:
+    # Merge reports from all test jobs
+    if: always()
+    needs: [e2e-tests, mobile-e2e-tests, accessibility-tests, performance-tests, visual-regression-tests]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: all-blob-reports
+        pattern: '*-report'
+
+    - name: Merge into HTML Report
+      run: npx playwright merge-reports --reporter html ./all-blob-reports
+
+    - name: Upload merged report
+      uses: actions/upload-artifact@v4
+      with:
+        name: merged-html-report
+        path: playwright-report
+        retention-days: 30
+
+    - name: Upload to GitHub Pages
+      if: github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./playwright-report
+        destination_dir: e2e-reports/${{ github.run_number }}
+
+  notify-status:
+    if: always()
+    needs: [e2e-tests, mobile-e2e-tests, accessibility-tests, performance-tests, visual-regression-tests]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Notify on success
+      if: needs.e2e-tests.result == 'success' && needs.mobile-e2e-tests.result == 'success'
+      run: echo "All E2E tests passed! ✅"
+
+    - name: Notify on failure
+      if: needs.e2e-tests.result == 'failure' || needs.mobile-e2e-tests.result == 'failure'
+      run: |
+        echo "E2E tests failed! ❌"
+        echo "Check the artifacts for detailed reports."
+        exit 1
+
+    - name: Comment PR
+      if: github.event_name == 'pull_request' && always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { owner, repo, number } = context.issue;
+          const runId = context.runId;
+          const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+          
+          const success = '${{ needs.e2e-tests.result }}' === 'success' && 
+                         '${{ needs.mobile-e2e-tests.result }}' === 'success' &&
+                         '${{ needs.accessibility-tests.result }}' === 'success' &&
+                         '${{ needs.performance-tests.result }}' === 'success';
+          
+          const status = success ? '✅ All E2E tests passed!' : '❌ Some E2E tests failed!';
+          const emoji = success ? '🎉' : '⚠️';
+          
+          const body = `${emoji} **E2E Test Results**
+
+          ${status}
+
+          **Test Summary:**
+          - 🖥️ Desktop E2E: ${{ needs.e2e-tests.result }}
+          - 📱 Mobile E2E: ${{ needs.mobile-e2e-tests.result }}
+          - ♿ Accessibility: ${{ needs.accessibility-tests.result }}
+          - ⚡ Performance: ${{ needs.performance-tests.result }}
+          - 👁️ Visual Regression: ${{ needs.visual-regression-tests.result }}
+
+          📊 [View detailed reports](${runUrl})
+          `;
+
+          github.rest.issues.createComment({
+            owner,
+            repo,
+            issue_number: number,
+            body
+          });

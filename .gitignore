@@ -105,3 +105,15 @@ temp/
 
 # Uploaded files
 uploads/
+
+# Real-time collaboration and server logs
+*.log
+api-server.log
+web-server.log
+nohup.out
+
+# Socket.IO and real-time cache
+.socket-cache/
+
+# Development server PIDs
+*.pid

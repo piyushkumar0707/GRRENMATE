@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GreenMate Socket.IO Test</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>GreenMate Real-time Features Test</h1>
+    <div id="status">Connecting...</div>
+    <div id="messages"></div>
+    
+    <div style="margin: 20px 0;">
+        <input type="text" id="messageInput" placeholder="Enter a test message" style="width: 300px; padding: 5px;">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <script>
+        // Valid JWT token for testing
+        const mockToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJ0ZXN0LXVzZXItMTIzIiwiZW1haWwiOiJ0ZXN0QGdyZWVubWF0ZS5jb20iLCJpYXQiOjE3NjAwMzkyMzYsImV4cCI6MTc2MDA0MjgzNn0.DHi4Xj_evIM_ZTvA_rkHQluSs7h4gsab2lgm4JcxCmc';
+        
+        const socket = io('http://localhost:3001', {
+            auth: {
+                token: mockToken
+            }
+        });
+
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+
+        socket.on('connect', () => {
+            statusDiv.innerHTML = '✅ Connected to GreenMate API with Socket.IO';
+            statusDiv.style.color = 'green';
+            console.log('Connected to server');
+        });
+
+        socket.on('disconnect', () => {
+            statusDiv.innerHTML = '❌ Disconnected from server';
+            statusDiv.style.color = 'red';
+        });
+
+        socket.on('connect_error', (error) => {
+            statusDiv.innerHTML = `❌ Connection Error: ${error.message}`;
+            statusDiv.style.color = 'red';
+            console.error('Connection error:', error);
+        });
+
+        // Join a test room
+        socket.on('connect', () => {
+            socket.emit('join-room', 'test-room');
+        });
+
+        // Listen for chat messages
+        socket.on('chat-message', (data) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.innerHTML = `<strong>${data.username}:</strong> ${data.content} <small>(${new Date(data.timestamp).toLocaleTimeString()})</small>`;
+            messageDiv.style.margin = '5px 0';
+            messagesDiv.appendChild(messageDiv);
+        });
+
+        // Listen for user events
+        socket.on('user-joined', (data) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.innerHTML = `<em>${data.username} joined the room</em>`;
+            messageDiv.style.color = 'blue';
+            messageDiv.style.margin = '5px 0';
+            messagesDiv.appendChild(messageDiv);
+        });
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                socket.emit('chat-message', {
+                    roomId: 'test-room',
+                    message: message
+                });
+                input.value = '';
+            }
+        }
+
+        // Send message on Enter key
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
